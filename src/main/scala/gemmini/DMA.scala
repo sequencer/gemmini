@@ -2,16 +2,30 @@ package gemmini
 
 import chisel3._
 import chisel3.util._
-
 import freechips.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp}
+import freechips.rocketchip.diplomacy.{IdRange, LazyModule, LazyModuleImp, ValName}
 import freechips.rocketchip.tile.{CoreBundle, HasCoreParameters}
-import testchipip.TLHelper
+import freechips.rocketchip.tilelink._
 import freechips.rocketchip.rocket.MStatus
 import freechips.rocketchip.rocket.constants.MemoryOpConstants
-
 import Util._
 
+object TLHelper {
+  def makeClientNode(name: String, sourceId: IdRange)
+                    (implicit valName: ValName): TLClientNode =
+    makeClientNode(TLClientParameters(name, sourceId))
+
+  def makeClientNode(params: TLClientParameters)
+                    (implicit valName: ValName): TLClientNode =
+    TLClientNode(Seq(TLClientPortParameters(Seq(params))))
+
+  def makeManagerNode(beatBytes: Int, params: TLManagerParameters)
+                     (implicit valName: ValName): TLManagerNode =
+    TLManagerNode(Seq(TLManagerPortParameters(Seq(params), beatBytes)))
+
+  def latency(lat: Int, node: TLOutwardNode)(implicit p: Parameters): TLOutwardNode =
+    TLBuffer.chain(lat).foldRight(node)(_ :=* _)
+}
 
 class StreamReadRequest(val spad_rows: Int, val acc_rows: Int)(implicit p: Parameters) extends CoreBundle {
   val vaddr = UInt(coreMaxAddrBits.W)
